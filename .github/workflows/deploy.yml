@@ -33,12 +33,12 @@ jobs:
 
       - name: Run rename script (optional)
         run: |
-          if [ -f rename.py ]; then
+          if [ -f "$GITHUB_WORKSPACE/rename.py" ]; then
             echo "Found rename.py — running non-interactively."
-            printf "2\ny\n" | python rename.py || echo "⚠ rename.py 运行失败，继续"
-          elif [ -f rename_media.py ]; then
+            printf "2\ny\n" | python "$GITHUB_WORKSPACE/rename.py" || echo "⚠ rename.py 运行失败，继续"
+          elif [ -f "$GITHUB_WORKSPACE/rename_media.py" ]; then
             echo "Found rename_media.py — running non-interactively."
-            printf "2\ny\n" | python rename_media.py || echo "⚠ rename_media.py 运行失败，继续"
+            printf "2\ny\n" | python "$GITHUB_WORKSPACE/rename_media.py" || echo "⚠ rename_media.py 运行失败，继续"
           else
             echo "No rename script found, skipping rename step"
 
@@ -46,16 +46,16 @@ jobs:
         run: |
           echo "当前工作目录: $(pwd)"
           echo "目录内容:"
-          ls -la
+          ls -la "$GITHUB_WORKSPACE"
 
       - name: Build website (with fallback)
         run: |
-          if [ -f build_site.py ]; then
+          if [ -f "$GITHUB_WORKSPACE/build_site.py" ]; then
             echo "Found build_site.py — running..."
-            python build_site.py || echo "⚠ build_site.py 执行失败，使用 fallback gallery.html"
+            python "$GITHUB_WORKSPACE/build_site.py" || echo "⚠ build_site.py 执行失败，使用 fallback gallery.html"
           else
             echo "未找到 build_site.py，创建基础 gallery.html..."
-            cat > gallery.html << 'GALLERY_EOF'
+            cat > "$GITHUB_WORKSPACE/gallery.html" << 'GALLERY_EOF'
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -78,7 +78,7 @@ GALLERY_EOF
 
       - name: Create index.html redirect
         run: |
-          cat > index.html << 'EOF'
+          cat > "$GITHUB_WORKSPACE/index.html" << 'EOF'
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -94,19 +94,19 @@ EOF
 
       - name: Prepare site folder
         run: |
-          rm -rf site
-          mkdir -p site
-          cp -f gallery.html index.html site/
-          [ -d ART ] && cp -r ART site/
-          [ -d HP ] && cp -r HP site/
+          rm -rf "$GITHUB_WORKSPACE/site"
+          mkdir -p "$GITHUB_WORKSPACE/site"
+          cp -f "$GITHUB_WORKSPACE/gallery.html" "$GITHUB_WORKSPACE/index.html" "$GITHUB_WORKSPACE/site/"
+          [ -d "$GITHUB_WORKSPACE/ART" ] && cp -r "$GITHUB_WORKSPACE/ART" "$GITHUB_WORKSPACE/site/"
+          [ -d "$GITHUB_WORKSPACE/HP" ] && cp -r "$GITHUB_WORKSPACE/HP" "$GITHUB_WORKSPACE/site/"
           echo "site/ 内容:"
-          ls -la site/
+          ls -la "$GITHUB_WORKSPACE/site/"
 
       - name: Upload static site as Pages artifact
         id: upload_artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: site
+          path: "$GITHUB_WORKSPACE/site"
 
   deploy:
     needs: build
