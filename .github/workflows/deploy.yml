@@ -29,7 +29,7 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
-          cache: 'pip'
+          # removed 'cache: pip' because setup-python will fail when no requirements/pyproject exists
 
       - name: Install Python dependencies
         run: |
@@ -38,7 +38,6 @@ jobs:
 
       - name: Run rename script (rename.py or rename_media.py)
         run: |
-          # 如果 repository 中既有 rename.py 优先使用，否则回退到 rename_media.py
           if [ -f rename.py ]; then
             echo "Found rename.py — running non-interactively (choose 2 and confirm)."
             printf "2\ny\n" | python rename.py
@@ -97,24 +96,17 @@ jobs:
         run: |
           rm -rf site
           mkdir -p site
-          # Copy generated gallery and index if they exist
           if [ -f gallery.html ]; then cp gallery.html site/; fi
           if [ -f index.html ]; then cp index.html site/; fi
-          # Copy media directories if present
           if [ -d ART ]; then cp -r ART site/; fi
           if [ -d HP ]; then cp -r HP site/; fi
-
-          # If build_site.py produced a directory like 'site' or 'build' directly, copy it as well
           if [ -d build ]; then cp -r build/* site/ || true; fi
           if [ -d dist ]; then cp -r dist/* site/ || true; fi
           if [ -d _site ]; then cp -r _site/* site/ || true; fi
-
-          # Fallback: if site is empty, copy any html in root
           if [ -z "$(ls -A site)" ]; then
             echo "site/ is empty — attempting to copy root HTML files as fallback"
             find . -maxdepth 1 -type f -name "*.html" -exec cp {} site/ \; || true
           fi
-
           echo "---- site/ contents ----"
           ls -la site || true
 
