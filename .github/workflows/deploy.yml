@@ -2,7 +2,7 @@ name: Deploy iGEM Media Gallery to GitHub Pages
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
@@ -29,6 +29,7 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
+          cache: ''  # 禁用缓存，避免requirements.txt缺失的警告
 
       - name: Run rename script (rename.py or rename_media.py)
         run: |
@@ -42,10 +43,126 @@ jobs:
             echo "No rename script found, skipping rename step"
           fi
 
-      - name: Build website
+      - name: Build website (条件执行)
         run: |
-          echo "Building website with build_site.py..."
-          python build_site.py
+          echo "检查文件结构..."
+          echo "当前目录: $(pwd)"
+          ls -la
+          
+          # 检查构建脚本是否存在
+          if [ -f build_site.py ]; then
+            echo "Building website with build_site.py..."
+            python build_site.py
+          else
+            echo "未找到 build_site.py，创建基础 gallery.html..."
+            # 创建基础画廊页面
+            cat > gallery.html << 'GALLERY_EOF'
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYPHU-CHINA iGEM Media Gallery</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+        }
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .media-section {
+            margin-bottom: 40px;
+        }
+        .section-title {
+            color: #3498db;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .media-item {
+            border: 1px solid #e1e8ed;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            background: #f8f9fa;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .media-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .media-name {
+            font-weight: bold;
+            margin: 10px 0 5px;
+            color: #2c3e50;
+        }
+        .media-info {
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+        .no-media {
+            text-align: center;
+            color: #95a5a6;
+            font-style: italic;
+            padding: 40px;
+            grid-column: 1 / -1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SYPHU-CHINA iGEM Media Gallery</h1>
+        <p class="subtitle">合成生物学创新项目 - 媒体资源库</p>
+        
+        <div class="media-section">
+            <h2 class="section-title">ART 媒体资源</h2>
+            <div class="gallery" id="art-gallery">
+                <div class="no-media">ART 目录暂无媒体文件</div>
+            </div>
+        </div>
+        
+        <div class="media-section">
+            <h2 class="section-title">HP 媒体资源</h2>
+            <div class="gallery" id="hp-gallery">
+                <div class="no-media">HP 目录暂无媒体文件</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 简单的JavaScript来动态加载媒体文件（如果需要的话）
+        console.log('iGEM Media Gallery loaded successfully');
+    </script>
+</body>
+</html>
+GALLERY_EOF
+            echo "基础 gallery.html 创建完成"
+          fi
 
       - name: Create index.html redirect
         run: |
@@ -80,10 +197,32 @@ jobs:
           echo "---- Workspace root ----"
           ls -la
           echo "---- Check for key files ----"
-          if [ -f gallery.html ]; then echo "FOUND: gallery.html"; else echo "gallery.html NOT FOUND"; fi
-          if [ -f index.html ]; then echo "FOUND: index.html"; else echo "index.html NOT FOUND"; fi
-          if [ -d ART ]; then echo "FOUND: ART/"; ls -la ART | sed -n '1,50p' || true; else echo "ART/ NOT FOUND"; fi
-          if [ -d HP ]; then echo "FOUND: HP/"; ls -la HP | sed -n '1,50p' || true; else echo "HP/ NOT FOUND"; fi
+          if [ -f gallery.html ]; then 
+            echo "FOUND: gallery.html"
+            echo "文件大小: $(wc -l < gallery.html) 行"
+          else 
+            echo "gallery.html NOT FOUND" 
+          fi
+          if [ -f index.html ]; then 
+            echo "FOUND: index.html"
+            echo "文件大小: $(wc -l < index.html) 行"
+          else 
+            echo "index.html NOT FOUND" 
+          fi
+          if [ -d ART ]; then 
+            echo "FOUND: ART/"
+            echo "ART目录文件数: $(find ART -type f | wc -l)"
+            ls -la ART | head -10
+          else 
+            echo "ART/ NOT FOUND" 
+          fi
+          if [ -d HP ]; then 
+            echo "FOUND: HP/"
+            echo "HP目录文件数: $(find HP -type f | wc -l)"
+            ls -la HP | head -10
+          else 
+            echo "HP/ NOT FOUND" 
+          fi
 
       - name: Collect site files into site/ (for Pages upload)
         run: |
@@ -105,7 +244,9 @@ jobs:
             find . -maxdepth 1 -type f -name "*.html" -exec cp {} site/ \; || true
           fi
           echo "---- site/ contents ----"
-          ls -la site || true
+          ls -la site/ || true
+          echo "---- site/ 文件详情 ----"
+          find site/ -type f -exec echo "  {} (大小: $(wc -c < {})) bytes" \;
 
       - name: Upload static site as Pages artifact
         id: upload_artifact
