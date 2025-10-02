@@ -95,7 +95,7 @@ def generate_media_html(media_files, category):
                     <div class="media-overlay">
                         <button class="media-action-btn view-btn" onclick="enlargeImage(this)" aria-label="Analyze image: {description}">
                             <span class="action-icon">🔍</span>
-                            <span class="action-text">Analyze Data</span>
+                            <span class="action-text">Preview image</span>
                         </button>
                     </div>
                 </div>
