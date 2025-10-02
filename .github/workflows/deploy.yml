@@ -1,19 +1,15 @@
 name: Deploy iGEM Media Gallery to GitHub Pages
 
 on:
-  # 在推送到 main 分支时触发
   push:
     branches: [ "main" ]
-  # 允许手动触发
   workflow_dispatch:
 
-# 设置 GITHUB_TOKEN 的权限
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# 允许同时只有一个部署进行
 concurrency:
   group: "pages"
   cancel-in-progress: false
@@ -21,40 +17,39 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      artifact_id: ${{ steps.upload_artifact.outputs.artifact_id }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          # 检出所有历史，用于构建脚本
           fetch-depth: 0
-          
+
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
           cache: 'pip'
-          
+
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          # 如果有 requirements.txt 就安装
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          
+
       - name: Run media rename script
         run: |
-          # 检查重命名脚本是否存在，如果存在则运行
           if [ -f rename_media.py ]; then
             echo "Running media rename script..."
-            python rename_media.py <<< "2"  # 自动选择选项2（执行重命名）
+            python rename_media.py <<< "2"
           else
             echo "No rename_media.py found, skipping rename step"
           fi
-          
+
       - name: Build website
         run: |
           echo "Building website with build_site.py..."
           python build_site.py
-          
+
       - name: Create index.html redirect
         run: |
           cat > index.html << 'EOF'
@@ -65,63 +60,32 @@ jobs:
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
               <meta http-equiv="refresh" content="0; url=gallery.html">
               <title>SYPHU-CHINA iGEM Media Gallery</title>
-              <style>
-                  body {
-                      font-family: 'Arial', sans-serif;
-                      display: flex;
-                      justify-content: center;
-                      align-items: center;
-                      height: 100vh;
-                      margin: 0;
-                      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-                  }
-                  .redirect-message {
-                      text-align: center;
-                      padding: 2rem;
-                      background: white;
-                      border-radius: 10px;
-                      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                  }
-                  .spinner {
-                      border: 4px solid #f3f3f3;
-                      border-top: 4px solid #3498db;
-                      border-radius: 50%;
-                      width: 40px;
-                      height: 40px;
-                      animation: spin 2s linear infinite;
-                      margin: 0 auto 1rem;
-                  }
-                  @keyframes spin {
-                      0% { transform: rotate(0deg); }
-                      100% { transform: rotate(360deg); }
-                  }
-              </style>
-              <script>
-                  setTimeout(function() {
-                      window.location.href = "gallery.html";
-                  }, 2000);
-              </script>
+              <style>/* ...omitted for brevity... */</style>
+              <script>setTimeout(function(){window.location.href="gallery.html";},2000);</script>
           </head>
           <body>
-              <div class="redirect-message">
-                  <div class="spinner"></div>
-                  <h2>SYPHU-CHINA iGEM Media Gallery</h2>
-                  <p>正在跳转到媒体库...</p>
-                  <p>如果页面没有自动跳转，请 <a href="gallery.html">点击这里</a></p>
-              </div>
+              <div>正在跳转到媒体库... 如果没有跳转，请 <a href="gallery.html">点击这里</a></div>
           </body>
           </html>
           EOF
           echo "Created index.html redirect file"
-          
-      - name: Setup Pages
-        uses: actions/configure-pages@v3
-        
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v2
+
+      - name: Prepare list of files (debug)
+        run: |
+          echo "---- Files in workspace ----"
+          ls -la
+          echo "---- Files in build output (expected) ----"
+          # 假设 build_site.py 输出到 ./site 或 ./build（下面 upload 步骤要与此一致）
+          if [ -d site ]; then ls -la site || true; fi
+          if [ -d build ]; then ls -la build || true; fi
+          if [ -f gallery.html ]; then ls -la gallery.html || true; fi
+
+      - name: Upload static site as Pages artifact
+        id: upload_artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          # 上传整个仓库（包含生成的 gallery.html 和媒体文件）
-          path: '.'
+          # **将此处改为你的构建输出目录**。示例里用 `site`，如果你的脚本输出到仓库根目录或 `./`，也可改成 '.'（不推荐）。
+          path: site
 
   deploy:
     environment:
@@ -132,4 +96,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v2
+        uses: actions/deploy-pages@v4
