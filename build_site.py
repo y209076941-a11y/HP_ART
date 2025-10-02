@@ -166,6 +166,13 @@ def create_hp_integrated_html(hp_media_html, art_media_html, timestamp):
             --space-xxl: 4rem;
             --space-xxxl: 6rem;
 
+            /* 新增：圆角变量 */
+            --radius-sm: 4px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --radius-xl: 16px;
+            --radius-xxl: 24px;
+
             /* Enhanced Effects */
             --shadow-sm: 0 2px 8px rgba(13, 27, 42, 0.08);
             --shadow-md: 0 4px 16px rgba(13, 27, 42, 0.12);
