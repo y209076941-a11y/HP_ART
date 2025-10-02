@@ -36,13 +36,17 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Run media rename script
+      - name: Run rename script (rename.py or rename_media.py)
         run: |
-          if [ -f rename_media.py ]; then
-            echo "Running media rename script..."
-            python rename_media.py <<< "2"
+          # 如果 repository 中既有 rename.py 优先使用，否则回退到 rename_media.py
+          if [ -f rename.py ]; then
+            echo "Found rename.py — running non-interactively (choose 2 and confirm)."
+            printf "2\ny\n" | python rename.py
+          elif [ -f rename_media.py ]; then
+            echo "Found rename_media.py — running non-interactively (choose 2 and confirm)."
+            printf "2\ny\n" | python rename_media.py
           else
-            echo "No rename_media.py found, skipping rename step"
+            echo "No rename script found (rename.py / rename_media.py), skipping rename step"
           fi
 
       - name: Build website
@@ -60,11 +64,20 @@ jobs:
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
               <meta http-equiv="refresh" content="0; url=gallery.html">
               <title>SYPHU-CHINA iGEM Media Gallery</title>
-              <style>/* ...omitted for brevity... */</style>
+              <style>
+                body { font-family: Arial, sans-serif; display:flex; align-items:center; justify-content:center; height:100vh; margin:0; background: linear-gradient(135deg,#f5f7fa 0%,#c3cfe2 100%); }
+                .card{ background:#fff; padding:2rem; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,.08); text-align:center; }
+                .spinner{ border:4px solid #f3f3f3; border-top:4px solid #3498db; border-radius:50%; width:36px; height:36px; animation:spin 1.5s linear infinite; margin:0 auto 1rem; }
+                @keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+              </style>
               <script>setTimeout(function(){window.location.href="gallery.html";},2000);</script>
           </head>
           <body>
-              <div>正在跳转到媒体库... 如果没有跳转，请 <a href="gallery.html">点击这里</a></div>
+              <div class="card">
+                  <div class="spinner"></div>
+                  <h2>SYPHU-CHINA iGEM Media Gallery</h2>
+                  <p>正在跳转到媒体库... 如果没有跳转，请 <a href="gallery.html">点击这里</a></p>
+              </div>
           </body>
           </html>
           EOF
@@ -72,19 +85,43 @@ jobs:
 
       - name: Prepare list of files (debug)
         run: |
-          echo "---- Files in workspace ----"
+          echo "---- Workspace root ----"
           ls -la
-          echo "---- Files in build output (expected) ----"
-          # 假设 build_site.py 输出到 ./site 或 ./build（下面 upload 步骤要与此一致）
-          if [ -d site ]; then ls -la site || true; fi
-          if [ -d build ]; then ls -la build || true; fi
-          if [ -f gallery.html ]; then ls -la gallery.html || true; fi
+          echo "---- Check for key files ----"
+          if [ -f gallery.html ]; then echo "FOUND: gallery.html"; else echo "gallery.html NOT FOUND"; fi
+          if [ -f index.html ]; then echo "FOUND: index.html"; else echo "index.html NOT FOUND"; fi
+          if [ -d ART ]; then echo "FOUND: ART/"; ls -la ART | sed -n '1,20p' || true; else echo "ART/ NOT FOUND"; fi
+          if [ -d HP ]; then echo "FOUND: HP/"; ls -la HP | sed -n '1,20p' || true; else echo "HP/ NOT FOUND"; fi
+
+      - name: Collect site files into site/ (for Pages upload)
+        run: |
+          rm -rf site
+          mkdir -p site
+          # Copy generated gallery and index if they exist
+          if [ -f gallery.html ]; then cp gallery.html site/; fi
+          if [ -f index.html ]; then cp index.html site/; fi
+          # Copy media directories if present
+          if [ -d ART ]; then cp -r ART site/; fi
+          if [ -d HP ]; then cp -r HP site/; fi
+
+          # If build_site.py produced a directory like 'site' or 'build' directly, copy it as well
+          if [ -d build ]; then cp -r build/* site/ || true; fi
+          if [ -d dist ]; then cp -r dist/* site/ || true; fi
+          if [ -d _site ]; then cp -r _site/* site/ || true; fi
+
+          # Fallback: if site is empty, copy any html in root
+          if [ -z "$(ls -A site)" ]; then
+            echo "site/ is empty — attempting to copy root HTML files as fallback"
+            find . -maxdepth 1 -type f -name "*.html" -exec cp {} site/ \; || true
+          fi
+
+          echo "---- site/ contents ----"
+          ls -la site || true
 
       - name: Upload static site as Pages artifact
         id: upload_artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # **将此处改为你的构建输出目录**。示例里用 `site`，如果你的脚本输出到仓库根目录或 `./`，也可改成 '.'（不推荐）。
           path: site
 
   deploy:
