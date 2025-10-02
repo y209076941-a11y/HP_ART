@@ -11,6 +11,11 @@
     --white: #FFFFFF;
     --text-dark: #333333;
     --text-light: #666666;
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --radius-xxl: 24px;
 }
 
 /* 基础重置 */
